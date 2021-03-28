@@ -3,6 +3,10 @@ uuid = "6c77c675-0cb0-44a5-99a8-0d9fb050617a"
 authors = ["Takafumi Arakaki <aka.tkf@gmail.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+Catwalk = "860e6890-8a08-4313-9643-fcac6eb69798"
+Transducers = "28d57a85-8fef-5791-bfe6-a80928e7c999"
+
 [compat]
 julia = "1"
 
