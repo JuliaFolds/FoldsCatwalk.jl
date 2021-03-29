@@ -24,7 +24,7 @@ for how to specify what to JIT.
 struct CatwalkEx <: Executor
     batchsize::Int
 end
-CatwalkEx() = CatwalkEx(1000)
+CatwalkEx() = CatwalkEx(1_000_000)
 
 Transducers.maybe_set_simd(exc::CatwalkEx, _) = exc
 
@@ -81,11 +81,12 @@ function Transducers.transduce(xf, rf, init, coll, exc::CatwalkEx)
 end
 
 function onebatch(rf::RF, acc, itr, state, counter) where {RF}
+    jitctx = xform(inner(rf)).jitctx
     while counter != 0
         y = iterate(itr, state)
         y === nothing && return acc, state, true
         state = last(y)
-        val = next(rf, acc, first(y))
+        val = next(rf, acc, first(y), jitctx)
         val isa Reduced && return val, state, true
         acc = val
         counter -= 1
@@ -97,14 +98,13 @@ struct OptimizeXF{C} <: Transducer
     jitctx::C
 end
 
-Transducers.next(rf::R_{OptimizeXF}, acc, input) =
-    invoke_next(xform(rf).jitctx, inner(rf), acc, input)
-
-@jit jitfun jitarg function invoke_next(jitctx, rf::RF, acc, input) where {RF}
-    jitarg = (acc, input)
-    return jitfun(rf, jitarg)
+@inline @jit next mapped function Transducers.next(rf::R_{Map}, acc, input, jitctx)
+    mapped = xform(rf).f(input)
+    next(inner(rf), acc, mapped)
 end
 
-@inline jitfun(rf::RF, jitarg) where {RF} = next(rf, first(jitarg), last(jitarg))
+function Transducers.next(rf::R_{OptimizeXF}, acc, input)
+    next(inner(rf), acc, input)
+end
 
 end # module FoldsCatwalk
